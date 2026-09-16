@@ -4,7 +4,11 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+*.egg
+build/
+dist/
 .pytest_cache/
+.ruff_cache/
 .venv/
 venv/
 
@@ -26,3 +30,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Coverage reports
+.coverage
+htmlcov/
+coverage.xml

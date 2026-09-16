@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "recall-mcp"
+version = "1.0.0"
+description = "🧠 Long-term memory for AI agents — cross-session, persistent, MCP-native. SQLite + FTS5, zero external dependencies."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Eddy Flores", email = "eddyflores100-lang@users.noreply.github.com" },
+]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "agent-memory",
+    "llm",
+    "claude",
+    "cursor",
+    "sqlite",
+    "semantic-search",
+    "long-term-memory",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# Zero runtime dependencies — pure stdlib + sqlite3 (shipped with Python)
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/eddyflores100-lang/recall-mcp"
+Repository = "https://github.com/eddyflores100-lang/recall-mcp"
+Issues = "https://github.com/eddyflores100-lang/recall-mcp/issues"
+Changelog = "https://github.com/eddyflores100-lang/recall-mcp/releases"
+
+[project.scripts]
+# After `pip install recall-mcp`, the `recall-mcp` command starts the MCP server
+recall-mcp = "mcp_recall:main"
+
+[tool.hatch.build.targets.wheel]
+# Ship the single-file module at the wheel root so `from mcp_recall import ...` works
+packages = ["mcp_recall.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "mcp_recall.py",
+    "README.md",
+    "LICENSE",
+    "test_recall.py",
+    "examples.py",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "-q",
+]
+testpaths = ["tests", "test_recall.py"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]  # line length handled by formatter

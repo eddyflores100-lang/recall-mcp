@@ -59,12 +59,19 @@ They're complementary: use a pruner to fit more useful context in the current se
 
 ### 1. Install
 
-**Option A — pip (coming soon):**
+**Option A — pip (PyPI, recommended):**
 ```bash
-pip install mcp-recall
+pip install recall-mcp
+# After install, the `recall-mcp` command is available:
+recall-mcp   # starts the MCP server on stdio
 ```
 
-**Option B — single-file (recommended for now):**
+**Option B — uvx (no install, run directly):**
+```bash
+uvx recall-mcp
+```
+
+**Option C — single-file (zero install):**
 ```bash
 curl -sSL https://github.com/eddyflores100-lang/recall-mcp/raw/main/mcp_recall.py \
   -o ~/.local/bin/recall-mcp
@@ -75,14 +82,16 @@ No `pip install` step, no virtualenv, no API keys — just Python 3.10+ with std
 
 ### 2. Configure with your agent
 
+> **If you installed via pip/uvx:** use `"command": "recall-mcp"` with no args.
+> **If you used the single-file download:** use `"command": "python3"` with `"args": ["/path/to/mcp_recall.py"]`.
+
 **Claude Desktop** — edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
   "mcpServers": {
     "recall": {
-      "command": "python3",
-      "args": ["/path/to/mcp_recall.py"]
+      "command": "recall-mcp"
     }
   }
 }
@@ -94,14 +103,13 @@ No `pip install` step, no virtualenv, no API keys — just Python 3.10+ with std
 {
   "mcpServers": {
     "recall": {
-      "command": "python3",
-      "args": ["/path/to/mcp_recall.py"]
+      "command": "recall-mcp"
     }
   }
 }
 ```
 
-**Cline / Continue / any MCP client** — same pattern: `command=python3`, `args=["/path/to/mcp_recall.py"]`.
+**Cline / Continue / any MCP client** — same pattern: set `command` to `recall-mcp` (post-install) or `python3` with the script path (single-file mode).
 
 ### 3. Start using
 
@@ -239,13 +247,25 @@ This means: a memory that matches the query, was recently stored, marked as impo
 ## 🧪 Testing
 
 ```bash
-# Run the smoke test suite (14 tests, no network needed)
-curl -sSL https://github.com/eddyflores100-lang/recall-mcp/raw/main/test_recall.py -o /tmp/test_recall.py
-python3 /tmp/test_recall.py
-# Expected: "=== ALL TESTS PASSED ==="
+# Option A — full pytest suite (43 tests across 4 files)
+git clone https://github.com/eddyflores100-lang/recall-mcp.git
+cd recall-mcp
+pip install -e ".[dev]"
+python -m pytest tests/ -v
+# Expected: 43 passed
+
+# Option B — single-file smoke test (no pytest needed, 14 tests)
+python test_recall.py
+# Expected: === 14 passed, 0 failed ===
 ```
 
-The smoke test covers: initialize handshake, tools/list, remember, recall, duplicate detection, secret redaction, summarize_session, get_stats, list_memories, forget, export/import round-trip, and error handling.
+**CI:** GitHub Actions runs the full suite on Python 3.10–3.13 across Ubuntu, macOS, and Windows on every push and PR.
+
+The test suite covers:
+- **Protocol** (9 tests): initialize, ping, notifications/initialized, tools/list, invalid method, invalid tool, malformed JSON, resources/list, prompts/list
+- **Memory CRUD** (13 tests): remember, duplicate detection, empty/long content, importance clamping, recall with filters, forget by id/query, access count bumping
+- **Secrets** (11 tests): GitHub classic + fine-grained tokens, OpenAI, Anthropic, AWS, JWT, Stripe, connection strings, password assignments, private keys, on-disk verification
+- **Session & Export** (10 tests): summarize_session extraction + capping, get_stats, export/import round-trip, invalid input handling, list ordering, tag filters
 
 ## 🗺️ Roadmap
 

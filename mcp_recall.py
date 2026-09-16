@@ -72,11 +72,13 @@ def _log(level: str, msg: str) -> None:
 
 # Patterns that should never be stored as memories.
 _SECRET_PATTERNS = [
-    # GitHub personal access tokens (classic + fine-grained)
+    # GitHub personal access tokens (classic: ghp_, gho_, ghs_, ghr_, ghu_)
     re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b"),
+    # GitHub fine-grained tokens (github_pat_11BiXXXX_YYYY...)
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{22,}\b"),
     # OpenAI / Anthropic / Gemini API keys
     re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"),
-    re.compile(r"\bsk-ant-[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\bsk-ant-[A-Za-z0-9\-]{20,}\b"),
     re.compile(r"\bAIza[A-Za-z0-9_\-]{35}\b"),
     # AWS access keys
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
@@ -90,10 +92,10 @@ _SECRET_PATTERNS = [
     re.compile(r"\bxox[baprs]-[A-Za-z0-9\-]{10,}\b"),
     # Private keys
     re.compile(r"-----BEGIN (RSA|EC|OPENSSH|PGP|PRIVATE) (PRIVATE KEY|KEY)-----"),
-    # Generic password= assignments
-    re.compile(r"(?i)(password|passwd|pwd)\s*[=:]\s*\S+"),
-    # Connection strings with embedded creds
-    re.compile(r"(?i)(postgres|mysql|mongodb|redis)://[^:\s]+:[^@\s]+@"),
+    # Generic password= assignments (but keep the key name, redact the value)
+    re.compile(r"(?i)(password|passwd|pwd)\s*[=:]\s*[^\s,;'\"]+"),
+    # Connection strings with embedded creds (keep the scheme, redact creds)
+    re.compile(r"(?i)(postgres|postgresql|mysql|mongodb|redis|amqp)://[^:\s]+:[^@\s]+@"),
 ]
 
 _SECRET_REPLACEMENT = "[REDACTED]"
@@ -295,10 +297,12 @@ class MemoryStore:
 
         limit = max(1, min(int(limit), MAX_RESULTS))
         # Build FTS5 query: prefix tokens joined with OR for high recall.
+        # Split on whitespace AND non-word chars (hyphens, punctuation) so
+        # "fine-grained" becomes ["fine", "grained"], not ["finegrained"].
         # NOTE: FTS5 does NOT support '"token"'* (quoted + prefix) — must use bare
-        # prefix form: token*. We also strip FTS5 special chars to avoid parse errors.
-        terms = [re.sub(r'[^\w]', '', t) for t in re.split(r"\s+", query.strip()) if t]
-        terms = [t for t in terms if len(t) >= 2]  # skip 1-char noise
+        # prefix form: token*. Strip FTS5 special chars to avoid parse errors.
+        raw_terms = re.split(r"[\s\W]+", query.strip())
+        terms = [t for t in raw_terms if len(t) >= 2]
         if not terms:
             return []
         fts_query = " OR ".join(f"{t}*" for t in terms)
@@ -385,8 +389,8 @@ class MemoryStore:
             self.conn.commit()
             return cur.rowcount
         # query: FTS match (same prefix-OR form as recall)
-        terms = [re.sub(r'[^\w]', '', t) for t in query.strip().split() if t]
-        terms = [t for t in terms if len(t) >= 2]
+        raw_terms = re.split(r"[\s\W]+", query.strip())
+        terms = [t for t in raw_terms if len(t) >= 2]
         if not terms:
             return 0
         fts_query = " OR ".join(f"{t}*" for t in terms)
