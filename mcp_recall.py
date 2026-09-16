@@ -1034,6 +1034,16 @@ def _handle_request(store: MemoryStore, line: str) -> Optional[str]:
 
 
 def main() -> int:
+    # Force UTF-8 on stdio — prevents UnicodeEncodeError on Windows (cp1252 default)
+    # when content contains non-Latin1 chars (emojis, CJK, accented text).
+    try:
+        sys.stdin.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)  # type: ignore[attr-defined]
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except (AttributeError, ValueError):
+        # Python < 3.7 or non-TextIOWrapper — fall through; we still try best-effort
+        pass
+
     store = MemoryStore()
     _log("INFO", "Recall MCP server starting (stdio mode)")
     try:
