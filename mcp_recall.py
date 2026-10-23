@@ -38,7 +38,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 # ============================================================================
 # Configuration
@@ -192,7 +192,7 @@ class MemoryStore:
         return time.time()
 
     @staticmethod
-    def _normalize_tags(tags: Any) -> List[str]:
+    def _normalize_tags(tags: Any) -> list[str]:
         if tags is None:
             return []
         if isinstance(tags, str):
@@ -203,13 +203,13 @@ class MemoryStore:
         return []
 
     @staticmethod
-    def _validate_source(source: Optional[str]) -> str:
+    def _validate_source(source: str | None) -> str:
         if source in ("user", "agent", "auto", None):
             return source or "user"
         return "user"
 
     @staticmethod
-    def _validate_importance(importance: Optional[float]) -> float:
+    def _validate_importance(importance: float | None) -> float:
         try:
             v = float(importance)
         except (TypeError, ValueError):
@@ -222,10 +222,10 @@ class MemoryStore:
         self,
         content: str,
         tags: Any = None,
-        project: Optional[str] = None,
-        source: Optional[str] = None,
-        importance: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        project: str | None = None,
+        source: str | None = None,
+        importance: float | None = None,
+    ) -> dict[str, Any]:
         """Store a memory. Returns dict with id, status, duplicate flag."""
         if not content or not content.strip():
             raise ValueError("content must be non-empty")
@@ -287,10 +287,10 @@ class MemoryStore:
         self,
         query: str,
         limit: int = 10,
-        project: Optional[str] = None,
+        project: str | None = None,
         tags: Any = None,
         min_importance: float = 0.0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Semantic-ish search via FTS5 BM25 + recency/importance boost."""
         if not query or not query.strip():
             return []
@@ -314,7 +314,7 @@ class MemoryStore:
             "FROM memories_fts JOIN memories m ON m.rowid = memories_fts.rowid "
             "WHERE memories_fts MATCH ? "
         )
-        params: List[Any] = [fts_query]
+        params: list[Any] = [fts_query]
         if project:
             sql += " AND m.project = ? "
             params.append(project)
@@ -328,7 +328,7 @@ class MemoryStore:
 
         # Re-rank by combining BM25 score with recency + importance + access count
         now = self._now()
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for r in rows:
             age_days = max(0.0, (now - r["created_at"]) / 86400.0)
             # decay: full weight for first DECAY_DAYS, then linear fade
@@ -380,7 +380,7 @@ class MemoryStore:
         _log("DEBUG", f"recall: '{query}' -> {len(results)} results")
         return results
 
-    def forget(self, id: Optional[str] = None, query: Optional[str] = None) -> int:
+    def forget(self, id: str | None = None, query: str | None = None) -> int:
         """Delete by id or by FTS match. Returns count deleted."""
         if not id and not query:
             raise ValueError("forget requires either id or query")
@@ -410,11 +410,11 @@ class MemoryStore:
 
     def list_memories(
         self,
-        project: Optional[str] = None,
-        tag: Optional[str] = None,
+        project: str | None = None,
+        tag: str | None = None,
         limit: int = 50,
         order: str = "recent",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List memories with filters. order: recent | oldest | accessed | important."""
         limit = max(1, min(int(limit), MAX_RESULTS))
         sql = (
@@ -422,7 +422,7 @@ class MemoryStore:
             "       last_accessed_at, access_count, importance "
             "FROM memories WHERE 1=1 "
         )
-        params: List[Any] = []
+        params: list[Any] = []
         if project:
             sql += " AND project = ? "
             params.append(project)
@@ -461,9 +461,9 @@ class MemoryStore:
     def summarize_session(
         self,
         messages: Any,
-        project: Optional[str] = None,
+        project: str | None = None,
         max_memories: int = 5,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Extract memories from a conversation. Heuristic: pull facts, decisions,
         code refs, and TODO items from user/assistant messages."""
         if isinstance(messages, str):
@@ -474,18 +474,8 @@ class MemoryStore:
         if not isinstance(messages, list):
             raise ValueError("messages must be a list of {role, content} dicts")
 
-        # Patterns we treat as "memorable"
-        fact_patterns = [
-            re.compile(r"(?im)^(?:user|assistant):\s*(.+)$"),
-            re.compile(r"(?i)(?:prefer\w*|always|never|don't|please remember)\s+(.+?)\."),
-            re.compile(r"(?i)(?:decided|decision|agreed|concluded)\s*:?\s*(.+?)\."),
-            re.compile(r"(?i)(?:todo|fixme|bug|issue|task)\s*[:=]\s*(.+?)\."),
-            re.compile(r"(?i)(?:rule|convention|standard|guideline)\s*:?\s*(.+?)\."),
-            re.compile(r"(?i)(?:file|module|function|class|component)\s+(\w[\w\.\-]+)"),
-            re.compile(r"(?im)```(\w+)?\n([\s\S]+?)```"),
-        ]
 
-        extracted: List[str] = []
+        extracted: list[str] = []
         for msg in messages:
             if not isinstance(msg, dict):
                 continue
@@ -522,7 +512,7 @@ class MemoryStore:
         unique = unique[:max_memories]
 
         # Store each as a memory with source='auto'
-        stored: List[Dict[str, Any]] = []
+        stored: list[dict[str, Any]] = []
         for e in unique:
             try:
                 res = self.remember(content=e, project=project, source="auto")
@@ -538,7 +528,7 @@ class MemoryStore:
             "ids": [s.get("id") for s in stored],
         }
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Aggregate stats about the memory store."""
         total = self.conn.execute("SELECT COUNT(*) AS n FROM memories").fetchone()["n"]
         if total == 0:
@@ -553,19 +543,19 @@ class MemoryStore:
                 "avg_importance": 0.0,
                 "db_size_bytes": os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0,
             }
-        by_project: Dict[str, int] = {}
+        by_project: dict[str, int] = {}
         for r in self.conn.execute(
             "SELECT project, COUNT(*) AS n FROM memories GROUP BY project"
         ).fetchall():
             by_project[r["project"] or "(none)"] = r["n"]
 
-        by_source: Dict[str, int] = {}
+        by_source: dict[str, int] = {}
         for r in self.conn.execute(
             "SELECT source, COUNT(*) AS n FROM memories GROUP BY source"
         ).fetchall():
             by_source[r["source"] or "(none)"] = r["n"]
 
-        by_tag: Dict[str, int] = {}
+        by_tag: dict[str, int] = {}
         for r in self.conn.execute("SELECT tags FROM memories").fetchall():
             for t in json.loads(r["tags"]) if r["tags"] else []:
                 by_tag[t] = by_tag.get(t, 0) + 1
@@ -617,14 +607,14 @@ class MemoryStore:
             "db_size_bytes": os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0,
         }
 
-    def export_memories(self, project: Optional[str] = None) -> Dict[str, Any]:
+    def export_memories(self, project: str | None = None) -> dict[str, Any]:
         """Export memories as JSON-serializable dict."""
         sql = (
             "SELECT id, content, tags, project, source, created_at, "
             "       last_accessed_at, access_count, importance "
             "FROM memories"
         )
-        params: List[Any] = []
+        params: list[Any] = []
         if project:
             sql += " WHERE project = ? "
             params.append(project)
@@ -650,13 +640,13 @@ class MemoryStore:
             ],
         }
 
-    def import_memories(self, data: Any, on_duplicate: str = "skip") -> Dict[str, Any]:
+    def import_memories(self, data: Any, on_duplicate: str = "skip") -> dict[str, Any]:
         """Import memories from a JSON dict or string. on_duplicate: skip | bump | replace."""
         if isinstance(data, str):
             try:
                 data = json.loads(data)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON: {e}")
+                raise ValueError(f"Invalid JSON: {e}") from e
         if not isinstance(data, dict) or "memories" not in data:
             raise ValueError("Expected {version, memories: [...]}")
         on_duplicate = (on_duplicate or "skip").lower()
@@ -737,7 +727,7 @@ class MemoryStore:
 # ============================================================================
 
 # Tool registry: name -> (handler, input_schema, description)
-TOOLS: Dict[str, Dict[str, Any]] = {
+TOOLS: dict[str, dict[str, Any]] = {
     "remember": {
         "description": (
             "Store a long-term memory. Use this whenever the user states a preference, "
@@ -912,7 +902,7 @@ def _jsonrpc_error(req_id: Any, code: int, message: str, data: Any = None) -> st
     return json.dumps({"jsonrpc": "2.0", "id": req_id, "error": err})
 
 
-def _text_content(text: str) -> List[Dict[str, Any]]:
+def _text_content(text: str) -> list[dict[str, Any]]:
     return [{"type": "text", "text": text}]
 
 
@@ -931,7 +921,7 @@ def _tool_response(req_id: Any, payload: Any) -> str:
 # ============================================================================
 
 
-def _dispatch_tool(store: MemoryStore, name: str, args: Dict[str, Any]) -> Any:
+def _dispatch_tool(store: MemoryStore, name: str, args: dict[str, Any]) -> Any:
     if name == "remember":
         return store.remember(
             content=args["content"],
@@ -979,7 +969,7 @@ def _dispatch_tool(store: MemoryStore, name: str, args: Dict[str, Any]) -> Any:
 # ============================================================================
 
 
-def _handle_request(store: MemoryStore, line: str) -> Optional[str]:
+def _handle_request(store: MemoryStore, line: str) -> str | None:
     """Parse and handle a single JSON-RPC request. Return response string or None."""
     try:
         req = json.loads(line)

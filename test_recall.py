@@ -61,7 +61,7 @@ def main() -> int:
                   "tags": ["coding-style"], "project": "webapp", "importance": 0.9}}})
     data = json.loads(r["result"]["content"][0]["text"])
     check("remember creates", data["status"] == "created", str(data))
-    mid = data["id"]
+    _ = data["id"]
 
     # 4. recall (note: FTS5 indexes content only, so we query against stored words)
     r = send({"jsonrpc": "2.0", "id": 4, "method": "tools/call",

@@ -1,10 +1,6 @@
 """Tests for the remember / recall / forget memory CRUD operations."""
 from __future__ import annotations
 
-import time
-
-import pytest
-
 
 def test_remember_returns_id_and_status_created(mcp):
     r = mcp.tool("remember", {

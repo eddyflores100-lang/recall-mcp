@@ -1,9 +1,6 @@
 """Tests for secret redaction — no token must ever hit the SQLite file on disk."""
 from __future__ import annotations
 
-import sqlite3
-import os
-
 
 def test_github_classic_token_redacted(mcp):
     mcp.tool("remember", {
@@ -93,7 +90,6 @@ def test_redaction_happens_on_disk_not_just_in_output(mcp):
         "content": "Token: ghp_abcdefghijklmnopqrstuvwxyz0123456789ABCD",
     })
     # The mcp fixture's DB path is set via RECALL_MCP_DB env var.
-    db_path = os.environ.get("RECALL_MCP_DB", "")
     # Read the DB while the server is still alive (SQLite allows concurrent reads).
     import sqlite3 as _sqlite3
     conn = _sqlite3.connect(mcp.db_path)

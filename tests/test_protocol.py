@@ -1,8 +1,6 @@
 """Tests for the MCP protocol layer (initialize, ping, tools/list, tools/call)."""
 from __future__ import annotations
 
-import pytest
-
 
 def test_initialize_returns_server_info(mcp):
     r = mcp.send({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
