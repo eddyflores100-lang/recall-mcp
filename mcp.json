@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "recall-mcp": {
+      "command": "python",
+      "args": ["-m", "mcp_recall"],
+      "env": {}
+    }
+  }
+}
